@@ -1,6 +1,6 @@
 {
-    "label": "ZIP Service",
-    "name": "zipService",
+    "label": "ZIP",
+    "name": "zip",
     "apiVersion": "v1",
     "internal": false,
     "configurationType": "GLOBAL",
