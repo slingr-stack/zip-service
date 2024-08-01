@@ -1,0 +1,78 @@
+{
+    "label": "ZIP Service",
+    "name": "zipService",
+    "apiVersion": "v1",
+    "internal": false,
+    "configurationType": "GLOBAL",
+    "deployment": {
+        "jsService": true,
+        "profiles":[
+            {
+                "name": "small",
+                "label": "Small",
+                "memory": 128,
+                "description": "Small Memory Allocation"
+            },
+            {
+                "name": "default",
+                "label": "Default",
+                "memory": 256,
+                "description": "Default Memory Allocation"
+            },
+            {
+                "name": "medium",
+                "label": "Medium",
+                "memory": 512,
+                "description": "Medium Memory Allocation"
+            },
+            {
+                "name": "big",
+                "label": "Big",
+                "memory": 256,
+                "description": "Big Memory Allocation"
+            }
+        ],
+        "allowMultipleInstances": false
+    },
+    "status": "ACTIVE",
+    "stores": [],
+    "events": [
+        {
+            "label": "On ZIP Complete",
+            "name": "onZipComplete",
+            "description": "Callback event for when zipping a set of files has finished"
+        },
+        {
+            "label": "On UnZIP Complete",
+            "name": "onUnzipComplete",
+            "description": "Callback event for when unzipping a file has finished"
+        }
+    ],
+    "functions": [
+        {
+            "label": "ZIP Files",
+            "name": "zipFiles",
+            "description": "The service receives a list of files and returns a zipped file",
+            "callbacks": [
+                {
+                    "name": "onZipComplete",
+                    "maxWaitingTime": 120000,
+                    "maxExpectedResponses": 1
+                }
+            ]
+        },
+        {
+            "label": "UnZIP Files",
+            "name": "unzipFile",
+            "description": "The service receives a zip file and returns a list of files",
+            "callbacks": [
+                {
+                    "name": "onUnzipComplete",
+                    "maxWaitingTime": 120000,
+                    "maxExpectedResponses": 1
+                }
+            ]
+        }
+    ],
+    "configuration":[]
+}

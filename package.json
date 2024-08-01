@@ -1,0 +1,28 @@
+{
+  "name": "zip-service",
+  "version": "1.0.0",
+  "description": "Slingr Service to zip and unzip files",
+  "main": "appService.js",
+  "scripts": {
+    "start": "node appService.js",
+    "startDev": "nodemon appService.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Juanma Espinosa <jmespinosa@slingr.io>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/slingr-stack/zip-service"
+  },
+  "keywords": [
+    "slingr",
+    "zip",
+    "services"
+  ],
+  "dependencies": {
+    "@slingr/slingr-services": "^0.0.8",
+    "adm-zip": "^0.5.14"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
