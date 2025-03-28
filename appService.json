@@ -28,7 +28,7 @@
             {
                 "name": "big",
                 "label": "Big",
-                "memory": 256,
+                "memory": 1024,
                 "description": "Big Memory Allocation"
             }
         ],
