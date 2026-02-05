@@ -20,8 +20,10 @@ async function unzipFile(fileId, options = {}) {
     const zipEntries = zip.getEntries(options.password);
     for (let zipEntry of zipEntries) {
         if (zipEntry.isDirectory) {
-            if (! options.recursive) continue; // Ignore directories if is not recursive
-            // TODO: Implement recursive
+            continue; // Always skip directory entries
+        }
+        if (!options.recursive && zipEntry.entryName.includes('/')) {
+            continue; // Skip files in subdirectories if not recursive
         }
         let file = await svc.files.upload(zipEntry.entryName, zipEntry.getData());
         files.push(file);
