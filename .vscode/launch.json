@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Slingr: Debug App",
+            "runtimeExecutable": "slingr",
+            "runtimeArgs": [
+                "run"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "openOnSessionStart"
+        }
+    ]
+}
