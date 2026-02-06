@@ -50,6 +50,7 @@ async function unzipFile(fileId, options = {}) {
         // Upload file with full path preserved - the monkey-patched fs.writeFileSync
         // will ensure parent directories exist when the library creates temp files
         let file = await svc.files.upload(zipEntry.entryName, zipEntry.getData());
+        file.fullPath = zipEntry.entryName; // Include full path in the response for reference
         files.push(file);
     }
     return files;
