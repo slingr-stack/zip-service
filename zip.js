@@ -1,6 +1,25 @@
 const svc = require('@slingr/slingr-services');
 const fs = require('node:fs/promises');
+const fsSync = require('node:fs');
+const path = require('node:path');
 const AdmZip = require('adm-zip');
+
+// Monkey-patch fs.writeFileSync to create parent directories if they don't exist
+// This is needed because svc.files.upload (via the slingr-services library) creates
+// temp file paths by concatenating the filename directly, which fails when the filename
+// contains path separators like 'model/types/file.json'
+const originalWriteFileSync = fsSync.writeFileSync;
+fsSync.writeFileSync = function(filePath, data, options) {
+    const dir = path.dirname(filePath);
+    // Use try-catch to avoid race conditions - mkdirSync with recursive:true
+    // won't error if the directory already exists
+    try {
+        fsSync.mkdirSync(dir, { recursive: true });
+    } catch (err) {
+        // Ignore errors - directory might already exist or be created by another process
+    }
+    return originalWriteFileSync.call(this, filePath, data, options);
+};
 
 async function zipFiles(files) {
     const zip = new AdmZip();
@@ -13,16 +32,23 @@ async function zipFiles(files) {
 
 async function unzipFile(fileId, options = {}) {
     let data = await svc.files.download(fileId);
-    let path = `/tmp/${fileId}`;
-    await fs.writeFile(path, data);
-    const zip = new AdmZip(path);
+    let filePath = `/tmp/${fileId}`;
+    await fs.writeFile(filePath, data);
+    const zip = new AdmZip(filePath);
     let files = [];
     const zipEntries = zip.getEntries(options.password);
     for (let zipEntry of zipEntries) {
         if (zipEntry.isDirectory) {
-            if (! options.recursive) continue; // Ignore directories if is not recursive
-            // TODO: Implement recursive
+            // Skip directory entries as they cannot be uploaded as files
+            // Files in directories will be handled by their full path
+            continue;
         }
+        if (!options.recursive && zipEntry.entryName.includes('/')) {
+            // Skip files in subdirectories when not in recursive mode
+            continue;
+        }
+        // Upload file with full path preserved - the monkey-patched fs.writeFileSync
+        // will ensure parent directories exist when the library creates temp files
         let file = await svc.files.upload(zipEntry.entryName, zipEntry.getData());
         files.push(file);
     }
