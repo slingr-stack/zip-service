@@ -1,5 +1,6 @@
 const svc = require('@slingr/slingr-services');
 const fs = require('node:fs/promises');
+const path = require('node:path');
 const AdmZip = require('adm-zip');
 
 async function zipFiles(files) {
@@ -13,17 +14,17 @@ async function zipFiles(files) {
 
 async function unzipFile(fileId, options = {}) {
     let data = await svc.files.download(fileId);
-    let path = `/tmp/${fileId}`;
-    await fs.writeFile(path, data);
-    const zip = new AdmZip(path);
+    let tmpPath = `/tmp/${fileId}`;
+    await fs.writeFile(tmpPath, data);
+    const zip = new AdmZip(tmpPath);
     let files = [];
     const zipEntries = zip.getEntries(options.password);
     for (let zipEntry of zipEntries) {
         if (zipEntry.isDirectory) {
-            if (! options.recursive) continue; // Ignore directories if is not recursive
-            // TODO: Implement recursive
+            continue; // Ignore directories
         }
-        let file = await svc.files.upload(zipEntry.entryName, zipEntry.getData());
+        let cleanFileName = path.basename(zipEntry.entryName);
+        let file = await svc.files.upload(cleanFileName, zipEntry.getData());
         files.push(file);
     }
     return files;
