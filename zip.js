@@ -3,6 +3,23 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const AdmZip = require('adm-zip');
 
+// Monkey-patch fs.writeFileSync to create parent directories if they don't exist
+// This is needed because svc.files.upload (via the slingr-services library) creates
+// temp file paths by concatenating the filename directly, which fails when the filename
+// contains path separators like 'model/types/file.json'
+const originalWriteFileSync = fsSync.writeFileSync;
+fsSync.writeFileSync = function(filePath, data, options) {
+    const dir = path.dirname(filePath);
+    // Use try-catch to avoid race conditions - mkdirSync with recursive:true
+    // won't error if the directory already exists
+    try {
+        fsSync.mkdirSync(dir, { recursive: true });
+    } catch (err) {
+        // Ignore errors - directory might already exist or be created by another process
+    }
+    return originalWriteFileSync.call(this, filePath, data, options);
+};
+
 async function zipFiles(files) {
     const zip = new AdmZip();
     for (let { fileId, fileName } of files) {
