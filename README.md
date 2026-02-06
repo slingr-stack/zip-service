@@ -84,7 +84,6 @@ let resData = {
 
 // Optional
 let options = {
-  recursive: false,
   password: null, // If zip is password protected
 }
 
