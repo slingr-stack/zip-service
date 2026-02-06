@@ -1,7 +1,20 @@
 const svc = require('@slingr/slingr-services');
 const fs = require('node:fs/promises');
+const fsSync = require('node:fs');
 const path = require('node:path');
 const AdmZip = require('adm-zip');
+
+// Monkey-patch fs.writeFileSync to create parent directories if they don't exist
+// This is needed because svc.files.upload doesn't create parent directories
+// when the filename contains path separators
+const originalWriteFileSync = fsSync.writeFileSync;
+fsSync.writeFileSync = function(filePath, data, options) {
+    const dir = path.dirname(filePath);
+    if (!fsSync.existsSync(dir)) {
+        fsSync.mkdirSync(dir, { recursive: true });
+    }
+    return originalWriteFileSync.call(this, filePath, data, options);
+};
 
 async function zipFiles(files) {
     const zip = new AdmZip();
@@ -29,13 +42,7 @@ async function unzipFile(fileId, options = {}) {
             // Skip files in subdirectories when not in recursive mode
             continue;
         }
-        
-        // Create the directory structure in ./tmp if the entry has a path
-        if (zipEntry.entryName.includes('/')) {
-            const dirPath = path.join('./tmp', path.dirname(zipEntry.entryName));
-            await fs.mkdir(dirPath, { recursive: true });
-        }
-        
+        // Upload with full path - monkey-patched fs.writeFileSync will create parent dirs
         let file = await svc.files.upload(zipEntry.entryName, zipEntry.getData());
         files.push(file);
     }
