@@ -1,6 +1,5 @@
 const svc = require('@slingr/slingr-services');
 const fs = require('node:fs/promises');
-const fsSync = require('node:fs');
 const path = require('node:path');
 const AdmZip = require('adm-zip');
 
@@ -32,24 +31,17 @@ async function zipFiles(files) {
 
 async function unzipFile(fileId, options = {}) {
     let data = await svc.files.download(fileId);
-    let filePath = `/tmp/${fileId}`;
-    await fs.writeFile(filePath, data);
-    const zip = new AdmZip(filePath);
+    let tmpPath = `/tmp/${fileId}`;
+    await fs.writeFile(tmpPath, data);
+    const zip = new AdmZip(tmpPath);
     let files = [];
     const zipEntries = zip.getEntries(options.password);
     for (let zipEntry of zipEntries) {
         if (zipEntry.isDirectory) {
-            // Skip directory entries as they cannot be uploaded as files
-            // Files in directories will be handled by their full path
-            continue;
+            continue; // Ignore directories
         }
-        if (!options.recursive && zipEntry.entryName.includes('/')) {
-            // Skip files in subdirectories when not in recursive mode
-            continue;
-        }
-        // Upload file with full path preserved - the monkey-patched fs.writeFileSync
-        // will ensure parent directories exist when the library creates temp files
-        let file = await svc.files.upload(zipEntry.entryName, zipEntry.getData());
+        let cleanFileName = path.basename(zipEntry.entryName);
+        let file = await svc.files.upload(cleanFileName, zipEntry.getData());
         files.push(file);
     }
     return files;
