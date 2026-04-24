@@ -9,6 +9,8 @@ const AdmZip = require('adm-zip');
 // temp file paths by concatenating the filename directly, which fails when the filename
 // contains path separators like 'model/types/file.json'
 const originalWriteFileSync = fsSync.writeFileSync;
+const MAX_ZIP_SIZE = 9.5 * 1024 * 1024; // 9.5MB en bytes
+
 fsSync.writeFileSync = function(filePath, data, options) {
     const dir = path.dirname(filePath);
     // Use try-catch to avoid race conditions - mkdirSync with recursive:true
@@ -28,6 +30,31 @@ async function zipFiles(files) {
         zip.addFile(fileName, Buffer.from(data, 'utf8'));
     }
     return zip.toBuffer();
+}
+
+async function zipFilesSafe(files) {
+    const zips = [];
+    let currentZip = new AdmZip();
+
+    for (let { fileId, fileName } of files) {
+        const data = await svc.files.download(fileId);
+        const buffer = Buffer.from(data, 'utf8');
+
+        currentZip.addFile(fileName, buffer);
+
+        if (currentZip.toBuffer().length > MAX_ZIP_SIZE) {
+            // Sacar el archivo que hizo superar el límite
+            currentZip.deleteFile(fileName);
+            // Guardar el zip actual y empezar uno nuevo con ese archivo
+            zips.push(currentZip.toBuffer());
+            currentZip = new AdmZip();
+            currentZip.addFile(fileName, buffer);
+        }
+    }
+
+    zips.push(currentZip.toBuffer());
+
+    return zips;
 }
 
 async function unzipFile(fileId, options = {}) {
@@ -66,6 +93,7 @@ async function unzipFile(fileId, options = {}) {
 
 module.exports = {
     zipFiles,
+    zipFilesSafe,
     unzipFile,
 };
 

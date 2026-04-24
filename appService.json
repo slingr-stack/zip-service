@@ -43,6 +43,11 @@
             "description": "Callback event for when zipping a set of files has finished"
         },
         {
+            "label": "On ZIP Safe Complete",
+            "name": "onZipSafeComplete",
+            "description": "Callback event for when zipping a set of files has finished"
+        },
+        {
             "label": "On UnZIP Complete",
             "name": "onUnzipComplete",
             "description": "Callback event for when unzipping a file has finished"
@@ -56,6 +61,18 @@
             "callbacks": [
                 {
                     "name": "onZipComplete",
+                    "maxWaitingTime": 120000,
+                    "maxExpectedResponses": 1
+                }
+            ]
+        },
+        {
+            "label": "ZIP Files (Safe)",
+            "name": "zipFilesSafe",
+            "description": "The service receives a list of files and returns a zipped list of files",
+            "callbacks": [
+                {
+                    "name": "onZipSafeComplete",
                     "maxWaitingTime": 120000,
                     "maxExpectedResponses": 1
                 }
