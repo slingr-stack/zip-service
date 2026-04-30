@@ -1,5 +1,5 @@
 const svc = require('@slingr/slingr-services');
-const { zipFiles, unzipFile } = require('./zip.js');
+const { zipFiles, zipFilesSafe, unzipFile } = require('./zip.js');
 
 svc.hooks.onSvcStart = () => {
     svc.logger.info('ZIP Service has started');
@@ -23,6 +23,33 @@ svc.functions.zipFiles = ({ params, id }) => {
         })
         .catch(err => {
             svc.events.send('onZipComplete', {
+                ok: false,
+                error: err.message,
+            }, id);
+        });
+    return { ok: true };
+};
+
+svc.functions.zipFilesSafe = ({ params, id }) => {
+    let { files, fileName } = params;
+    fileName ??= id + '.zip'; // Default file name
+
+    zipFilesSafe(files)
+        .then(async (contents) => {
+            let files = [];
+            for (let i = 0; i < contents.length; i++) {
+                const content = contents[i];
+                // Use a unique file name for each part
+                let file = await svc.files.upload(`${fileName}_${i + 1}.zip`, content);
+                files.push(file);
+            }
+            svc.events.send('onZipSafeComplete', {
+                files,
+                ok: true,
+            }, id);
+        })
+        .catch(err => {
+            svc.events.send('onZipSafeComplete', {
                 ok: false,
                 error: err.message,
             }, id);
