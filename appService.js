@@ -15,11 +15,6 @@ svc.functions.zipFiles = ({ params, id }) => {
 
     zipFiles(files)
         .then(async (content) => {
-            const sizeInBytes = content.byteLength;
-            const sizeInMB = sizeInBytes / (1024 * 1024);
-
-            console.log(` holaaaaa ${sizeInMB.toFixed(2)} MB`);
-
             let file = await svc.files.upload(fileName, content);
             svc.events.send('onZipComplete', {
                 file,
