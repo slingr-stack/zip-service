@@ -39,9 +39,24 @@ svc.functions.zipFilesSafe = ({ params, id }) => {
             let files = [];
             for (let i = 0; i < contents.length; i++) {
                 const content = contents[i];
-                // Use a unique file name for each part
-                let file = await svc.files.upload(`${fileName}_${i + 1}.zip`, content);
-                files.push(file);
+                const currentFileName = `${fileName}_${i + 1}.zip`; // Use a unique file name for each part
+
+                try {
+                    //upload current file
+                    let file = await svc.files.upload(currentFileName, content);
+                    svc.events.send('OnZipPartComplete', {
+                        file,
+                        part: i + 1,
+                        totalParts: content.length,
+                        ok: true,
+                    }, id);
+                } catch (uploadError) {
+                    svc.events.send('OnZipPartComplete', {
+                        part: i + 1,
+                        ok: false,
+                        error: uploadError.message
+                    }, id);
+                }
             }
             svc.events.send('onZipSafeComplete', {
                 files,
