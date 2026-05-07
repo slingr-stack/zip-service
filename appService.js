@@ -33,25 +33,24 @@ svc.functions.zipFiles = ({ params, id }) => {
 svc.functions.zipFilesSafe = ({ params, id }) => {
     let { files, fileName } = params;
     fileName ??= id + '.zip'; // Default file name
-
     zipFilesSafe(files)
         .then(async (contents) => {
-            let files = [];
-            for (let i = 0; i < contents.length; i++) {
+            let totalParts = contents.length;
+            for (let i = 0; i < totalParts; i++) {
                 const content = contents[i];
                 const currentFileName = `${fileName}_${i + 1}.zip`; // Use a unique file name for each part
 
                 try {
                     //upload current file
                     let file = await svc.files.upload(currentFileName, content);
-                    svc.events.send('OnZipPartComplete', {
+                    svc.events.send('onZipPartComplete', {
                         file,
                         part: i + 1,
-                        totalParts: content.length,
+                        totalParts: totalParts,
                         ok: true,
                     }, id);
                 } catch (uploadError) {
-                    svc.events.send('OnZipPartComplete', {
+                    svc.events.send('onZipPartComplete', {
                         part: i + 1,
                         ok: false,
                         error: uploadError.message
@@ -59,7 +58,6 @@ svc.functions.zipFilesSafe = ({ params, id }) => {
                 }
             }
             svc.events.send('onZipSafeComplete', {
-                files,
                 ok: true,
             }, id);
         })
