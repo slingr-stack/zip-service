@@ -30,30 +30,35 @@ svc.functions.zipFiles = ({ params, id }) => {
     return { ok: true };
 };
 
-svc.functions.zipFilesSafe = ({ params, id }) => {
+svc.functions.zipFilesSafe = async ({ params, id }) => {
     let { files, fileName } = params;
     fileName ??= id + '.zip'; // Default file name
+    try {
+        await zipFilesSafe(files, async (content, partNumber) => {
 
-    zipFilesSafe(files)
-        .then(async (contents) => {
-            let files = [];
-            for (let i = 0; i < contents.length; i++) {
-                const content = contents[i];
-                // Use a unique file name for each part
-                let file = await svc.files.upload(`${fileName}_${i + 1}.zip`, content);
-                files.push(file);
-            }
-            svc.events.send('onZipSafeComplete', {
-                files,
+            const currentFileName = `${fileName}_part${partNumber}.zip`;
+
+            // Upload current zip part
+            let file = await svc.files.upload(currentFileName, content);
+
+            // Notify success for this part
+            svc.events.send('onZipPartComplete', {
+                file,
+                part: partNumber,
                 ok: true,
             }, id);
-        })
-        .catch(err => {
-            svc.events.send('onZipSafeComplete', {
-                ok: false,
-                error: err.message,
-            }, id);
         });
+
+        // Notify overall completion
+        svc.events.send('onZipSafeComplete', { ok: true }, id);
+        
+
+    } catch (err) {
+        svc.events.send('onZipSafeComplete', {
+            ok: false,
+            error: err.message
+        }, id);
+    }
     return { ok: true };
 };
 

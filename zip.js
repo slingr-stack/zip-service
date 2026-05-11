@@ -11,7 +11,7 @@ const AdmZip = require('adm-zip');
 const originalWriteFileSync = fsSync.writeFileSync;
 const MAX_ZIP_SIZE = 9.5 * 1024 * 1024; // 9.5MB en bytes
 
-fsSync.writeFileSync = function(filePath, data, options) {
+fsSync.writeFileSync = function (filePath, data, options) {
     const dir = path.dirname(filePath);
     // Use try-catch to avoid race conditions - mkdirSync with recursive:true
     // won't error if the directory already exists
@@ -32,29 +32,42 @@ async function zipFiles(files) {
     return zip.toBuffer();
 }
 
-async function zipFilesSafe(files) {
-    const zips = [];
-    let currentZip = new AdmZip();
+async function zipFilesSafe(files, onPartReady) {
 
-    for (let { fileId, fileName } of files) {
+    let currentZip = new AdmZip();
+    let currentSize = 0;  // current zip size in bytes
+    let partCounter = 1;
+
+    for (const { fileId, fileName } of files) {
+        // Download file content
         const data = await svc.files.download(fileId);
         const buffer = Buffer.from(data, 'utf8');
+        const fileSize = buffer.length;
 
-        currentZip.addFile(fileName, buffer);
-
-        if (currentZip.toBuffer().length > MAX_ZIP_SIZE) {
-            // Sacar el archivo que hizo superar el límite
-            currentZip.deleteFile(fileName);
-            // Guardar el zip actual y empezar uno nuevo con ese archivo
-            zips.push(currentZip.toBuffer());
-            currentZip = new AdmZip();
-            currentZip.addFile(fileName, buffer);
+        // file is larger than the max allowed zip size
+        if (fileSize > MAX_ZIP_SIZE) {
+            svc.appLogger.error(`File ${fileName} is too large`);
+            continue; // Skip this file
         }
+        // If adding this file exceeds the max size, finalize current zip part
+        if (currentSize + fileSize > MAX_ZIP_SIZE) {
+            if (onPartReady) {
+                // Send current zip chunk before starting a new one
+                await onPartReady(currentZip.toBuffer(), partCounter++);
+            }
+
+            // Reset for the next batch
+            currentZip = new AdmZip();
+            currentSize = 0;
+        }
+        // Add file to current zip
+        currentZip.addFile(fileName, buffer);
+        currentSize += fileSize;
     }
-
-    zips.push(currentZip.toBuffer());
-
-    return zips;
+    //send the last part
+    if (currentSize > 0 && onPartReady) {
+        await onPartReady(currentZip.toBuffer(), partCounter);
+    }
 }
 
 async function unzipFile(fileId, options = {}) {
