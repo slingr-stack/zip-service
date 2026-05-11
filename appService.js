@@ -11,7 +11,7 @@ svc.hooks.onSvcStop = (cause) => {
 
 svc.functions.zipFiles = ({ params, id }) => {
     let { files, fileName } = params;
-    fileName ??= id + '.zip'; // Default file name
+
 
     zipFiles(files)
         .then(async (content) => {
@@ -30,35 +30,8 @@ svc.functions.zipFiles = ({ params, id }) => {
     return { ok: true };
 };
 
-svc.functions.zipFilesSafe = async ({ params, id }) => {
-    let { files, fileName } = params;
-    fileName ??= id + '.zip'; // Default file name
-    try {
-        await zipFilesSafe(files, async (content, partNumber) => {
-
-            const currentFileName = `${fileName}_part${partNumber}.zip`;
-
-            // Upload current zip part
-            let file = await svc.files.upload(currentFileName, content);
-
-            // Notify success for this part
-            svc.events.send('onZipPartComplete', {
-                file,
-                part: partNumber,
-                ok: true,
-            }, id);
-        });
-
-        // Notify overall completion
-        svc.events.send('onZipSafeComplete', { ok: true }, id);
-        
-
-    } catch (err) {
-        svc.events.send('onZipSafeComplete', {
-            ok: false,
-            error: err.message
-        }, id);
-    }
+svc.functions.zipFilesSafe = async(req) => {
+    zipFilesSafe(req);
     return { ok: true };
 };
 

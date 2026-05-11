@@ -32,42 +32,66 @@ async function zipFiles(files) {
     return zip.toBuffer();
 }
 
-async function zipFilesSafe(files, onPartReady) {
+async function zipFilesSafe(params) {
 
+    let { files, fileName, id } = params.params;
     let currentZip = new AdmZip();
+    fileName ??= id + '.zip'; // Default file name
     let currentSize = 0;  // current zip size in bytes
     let partCounter = 1;
 
-    for (const { fileId, fileName } of files) {
-        // Download file content
-        const data = await svc.files.download(fileId);
-        const buffer = Buffer.from(data, 'utf8');
-        const fileSize = buffer.length;
+    try {
+        for (const { fileId, fileName: fName } of files) {
+            // Download file content
+            const data = await svc.files.download(fileId);
+            const buffer = Buffer.from(data, 'utf8');
+            const fileSize = buffer.length;
 
-        // file is larger than the max allowed zip size
-        if (fileSize > MAX_ZIP_SIZE) {
-            svc.appLogger.error(`File ${fileName} is too large`);
-            continue; // Skip this file
-        }
-        // If adding this file exceeds the max size, finalize current zip part
-        if (currentSize + fileSize > MAX_ZIP_SIZE) {
-            if (onPartReady) {
-                // Send current zip chunk before starting a new one
-                await onPartReady(currentZip.toBuffer(), partCounter++);
+            // file is larger than the max allowed zip size
+            if (fileSize > MAX_ZIP_SIZE) {
+                svc.appLogger.error(`File ${fName} is too large`);
+                continue; // Skip this file
+            }
+            // If adding this file exceeds the max size, finalize current zip part
+            if (currentSize + fileSize > MAX_ZIP_SIZE) {
+                await new Promise(resolve => setTimeout(resolve, 500)); //wait half a second in case there is too much traffic
+                 // Send current zip chunk before starting a new one
+                await uploadZipPart(currentZip, fileName, partCounter++, id);
+                // Reset for the next batch
+                currentZip = new AdmZip();
+                currentSize = 0;
             }
 
-            // Reset for the next batch
-            currentZip = new AdmZip();
-            currentSize = 0;
+            // Add file to current zip
+            currentZip.addFile(fName, buffer);
+            currentSize += fileSize;
         }
-        // Add file to current zip
-        currentZip.addFile(fileName, buffer);
-        currentSize += fileSize;
+        //send the last part
+        if (currentSize > 0 ) {
+            await uploadZipPart(currentZip, fileName, partCounter, id);;
+        }
+        svc.events.send('onZipSafeComplete', { ok: true }, id);
+    } catch (err) {
+        svc.appLogger.error(`Error in zipFilesSafe: ${err.message}`);
+        svc.events.send('onZipSafeComplete', {
+            ok: false,
+            error: err.message
+        }, id);
     }
-    //send the last part
-    if (currentSize > 0 && onPartReady) {
-        await onPartReady(currentZip.toBuffer(), partCounter);
-    }
+
+}
+
+async function uploadZipPart(zipInstance, baseName, partNumber, id) {
+    const content = zipInstance.toBuffer();
+    const currentFileName = `${baseName}_Part${partNumber}.zip`;
+    
+    const file = await svc.files.upload(currentFileName, content);
+
+    svc.events.send('onZipPartComplete', {
+        file,
+        part: partNumber,
+        ok: true,
+    }, id);
 }
 
 async function unzipFile(fileId, options = {}) {
