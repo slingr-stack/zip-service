@@ -55,7 +55,7 @@ async function zipFilesSafe(params) {
             // If adding this file exceeds the max size, finalize current zip part
             if (currentSize + fileSize > MAX_ZIP_SIZE) {
                 await new Promise(resolve => setTimeout(resolve, 500)); //wait half a second in case there is too much traffic
-                 // Send current zip chunk before starting a new one
+                // Send current zip chunk before starting a new one
                 await uploadZipPart(currentZip, fileName, partCounter++, id);
                 // Reset for the next batch
                 currentZip = new AdmZip();
@@ -67,13 +67,14 @@ async function zipFilesSafe(params) {
             currentSize += fileSize;
         }
         //send the last part
-        if (currentSize > 0 ) {
+        if (currentSize > 0) {
             await uploadZipPart(currentZip, fileName, partCounter, id);;
         }
-        svc.events.send('onZipSafeComplete', { ok: true }, id);
+        svc.events.send('onZipProgress', { status: 'completed', ok: true }, id);
     } catch (err) {
         svc.appLogger.error(`Error in zipFilesSafe: ${err.message}`);
-        svc.events.send('onZipSafeComplete', {
+        svc.events.send('onZipProgress', {
+            status: 'error',
             ok: false,
             error: err.message
         }, id);
@@ -84,10 +85,11 @@ async function zipFilesSafe(params) {
 async function uploadZipPart(zipInstance, baseName, partNumber, id) {
     const content = zipInstance.toBuffer();
     const currentFileName = `${baseName}_Part${partNumber}.zip`;
-    
+
     const file = await svc.files.upload(currentFileName, content);
 
-    svc.events.send('onZipPartComplete', {
+    svc.events.send('onZipProgress', {
+        status: 'partial',
         file,
         part: partNumber,
         ok: true,

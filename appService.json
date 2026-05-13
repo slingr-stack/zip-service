@@ -6,7 +6,7 @@
     "configurationType": "GLOBAL",
     "deployment": {
         "jsService": true,
-        "profiles":[
+        "profiles": [
             {
                 "name": "small",
                 "label": "Small",
@@ -43,14 +43,9 @@
             "description": "Callback event for when zipping a set of files has finished"
         },
         {
-            "label": "On ZIP Safe Complete",
-            "name": "onZipSafeComplete",
-            "description": "Callback event for when zipping a set of files has finished"
-        },
-        {
-            "label": "On ZIP Part Complete",
-            "name": "onZipPartComplete",
-            "description": "Callback event for when a single zip part is ready"
+            "label": "On ZIP Progress",
+            "name": "onZipProgress",
+            "description": "Callback event for zip progress updates and final completion"
         },
         {
             "label": "On UnZIP Complete",
@@ -74,17 +69,12 @@
         {
             "label": "ZIP Files (Safe)",
             "name": "zipFilesSafe",
-            "description": "The service receives a list of files and returns a zipped list of files",
+            "description": "Receives a list of files, zips them in chunks to prevent memory issues, and sends progress updates as each part is uploaded, followed by a final completion status.",
             "callbacks": [
                 {
-                    "name": "onZipPartComplete",
+                    "name": "onZipProgress",
                     "maxWaitingTime": 120000,
                     "maxExpectedResponses": 200
-                  },
-                {
-                    "name": "onZipSafeComplete",
-                    "maxWaitingTime": 120000,
-                    "maxExpectedResponses": 1
                 }
             ]
         },
@@ -101,5 +91,5 @@
             ]
         }
     ],
-    "configuration":[]
+    "configuration": []
 }
