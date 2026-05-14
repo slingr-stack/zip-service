@@ -32,9 +32,10 @@ async function zipFiles(files) {
     return zip.toBuffer();
 }
 
-async function zipFilesSafe(params) {
+async function zipFilesSafe(req) {
 
-    let { files, fileName, id } = params.params;
+    let { params, id } = req;
+    let { files, fileName } = params;
     let currentZip = new AdmZip();
     fileName ??= id + '.zip'; // Default file name
     let currentSize = 0;  // current zip size in bytes
@@ -44,7 +45,7 @@ async function zipFilesSafe(params) {
         for (const { fileId, fileName: fName } of files) {
             // Download file content
             const data = await svc.files.download(fileId);
-            const buffer = Buffer.from(data, 'utf8');
+            const buffer = Buffer.from(data);
             const fileSize = buffer.length;
 
             // file is larger than the max allowed zip size
@@ -54,7 +55,6 @@ async function zipFilesSafe(params) {
             }
             // If adding this file exceeds the max size, finalize current zip part
             if (currentSize + fileSize > MAX_ZIP_SIZE) {
-                await new Promise(resolve => setTimeout(resolve, 500)); //wait half a second in case there is too much traffic
                 // Send current zip chunk before starting a new one
                 await uploadZipPart(currentZip, fileName, partCounter++, id);
                 // Reset for the next batch
@@ -68,7 +68,7 @@ async function zipFilesSafe(params) {
         }
         //send the last part
         if (currentSize > 0) {
-            await uploadZipPart(currentZip, fileName, partCounter, id);;
+            await uploadZipPart(currentZip, fileName, partCounter, id);
         }
         svc.events.send('onZipProgress', { status: 'completed', ok: true }, id);
     } catch (err) {
@@ -85,7 +85,6 @@ async function zipFilesSafe(params) {
 async function uploadZipPart(zipInstance, baseName, partNumber, id) {
     const content = zipInstance.toBuffer();
     const currentFileName = `${baseName}_Part${partNumber}.zip`;
-
     const file = await svc.files.upload(currentFileName, content);
 
     svc.events.send('onZipProgress', {

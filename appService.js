@@ -31,7 +31,7 @@ svc.functions.zipFiles = ({ params, id }) => {
 };
 
 svc.functions.zipFilesSafe = async (req) => {
-    zipFilesSafe(req);
+    await zipFilesSafe(req);
     return { ok: true };
 };
 
