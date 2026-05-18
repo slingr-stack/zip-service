@@ -35,7 +35,7 @@ async function zipFiles(files) {
 async function zipFilesSafe(req) {
 
     let { params, id } = req;
-    let { files, fileName, referenceId } = params; //referenceId where to store the zip file
+    let { files, fileName, referenceId, relatedData } = params; //referenceId where to store the zip file
     let currentZip = new AdmZip();
     fileName ??= id + '.zip'; // Default file name
     let currentSize = 0;  // current zip size in bytes
@@ -56,7 +56,7 @@ async function zipFilesSafe(req) {
             // If adding this file exceeds the max size, finalize current zip part
             if (currentSize + fileSize > MAX_ZIP_SIZE) {
                 // Send current zip chunk before starting a new one
-                await uploadZipPart(currentZip, fileName, partCounter++, referenceId, id);
+                await uploadZipPart(currentZip, fileName, partCounter++, referenceId, relatedData, id);
                 // Reset for the next batch
                 currentZip = new AdmZip();
                 currentSize = 0;
@@ -68,7 +68,7 @@ async function zipFilesSafe(req) {
         }
         //send the last part
         if (currentSize > 0) {
-            await uploadZipPart(currentZip, fileName, partCounter, referenceId, id);
+            await uploadZipPart(currentZip, fileName, partCounter, referenceId, relatedData, id);
         }
         svc.events.send('onZipProgress', { status: 'completed', referenceId: referenceId, ok: true}, id);
     } catch (err) {
@@ -83,7 +83,7 @@ async function zipFilesSafe(req) {
 
 }
 
-async function uploadZipPart(zipInstance, baseName, partNumber, referenceId, id) {
+async function uploadZipPart(zipInstance, baseName, partNumber, referenceId, relatedData, id) {
     const content = zipInstance.toBuffer();
     const currentFileName = `${baseName}_Part${partNumber}.zip`;
     const file = await svc.files.upload(currentFileName, content);
@@ -92,6 +92,7 @@ async function uploadZipPart(zipInstance, baseName, partNumber, referenceId, id)
         status: 'partial',
         referenceId: referenceId,
         file,
+        relatedData: relatedData,
         part: partNumber,
         ok: true
     }, id);

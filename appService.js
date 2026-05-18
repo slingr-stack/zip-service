@@ -12,7 +12,6 @@ svc.hooks.onSvcStop = (cause) => {
 svc.functions.zipFiles = ({ params, id }) => {
     let { files, fileName } = params;
 
-
     zipFiles(files)
         .then(async (content) => {
             let file = await svc.files.upload(fileName, content);
@@ -31,7 +30,9 @@ svc.functions.zipFiles = ({ params, id }) => {
 };
 
 svc.functions.zipFilesSafe = async (req) => {
-    await zipFilesSafe(req);
+    zipFilesSafe(req).catch(err => {
+        svc.appLogger.error(`Error in background zipFilesSafe: ${err.message}`);
+    });
     return { ok: true };
 };
 
