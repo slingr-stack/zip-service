@@ -35,7 +35,7 @@ async function zipFiles(files) {
 async function zipFilesSafe(req) {
 
     let { params, id } = req;
-    let { files, fileName } = params;
+    let { files, fileName, referenceId } = params; //referenceId where to store the zip file
     let currentZip = new AdmZip();
     fileName ??= id + '.zip'; // Default file name
     let currentSize = 0;  // current zip size in bytes
@@ -56,7 +56,7 @@ async function zipFilesSafe(req) {
             // If adding this file exceeds the max size, finalize current zip part
             if (currentSize + fileSize > MAX_ZIP_SIZE) {
                 // Send current zip chunk before starting a new one
-                await uploadZipPart(currentZip, fileName, partCounter++, id);
+                await uploadZipPart(currentZip, fileName, partCounter++, referenceId, id);
                 // Reset for the next batch
                 currentZip = new AdmZip();
                 currentSize = 0;
@@ -68,13 +68,14 @@ async function zipFilesSafe(req) {
         }
         //send the last part
         if (currentSize > 0) {
-            await uploadZipPart(currentZip, fileName, partCounter, id);
+            await uploadZipPart(currentZip, fileName, partCounter, referenceId, id);
         }
-        svc.events.send('onZipProgress', { status: 'completed', ok: true }, id);
+        svc.events.send('onZipProgress', { status: 'completed', referenceId: referenceId, ok: true}, id);
     } catch (err) {
         svc.appLogger.error(`Error in zipFilesSafe: ${err.message}`);
         svc.events.send('onZipProgress', {
             status: 'error',
+            referenceId: referenceId,
             ok: false,
             error: err.message
         }, id);
@@ -82,16 +83,17 @@ async function zipFilesSafe(req) {
 
 }
 
-async function uploadZipPart(zipInstance, baseName, partNumber, id) {
+async function uploadZipPart(zipInstance, baseName, partNumber, referenceId, id) {
     const content = zipInstance.toBuffer();
     const currentFileName = `${baseName}_Part${partNumber}.zip`;
     const file = await svc.files.upload(currentFileName, content);
 
     svc.events.send('onZipProgress', {
         status: 'partial',
+        referenceId: referenceId,
         file,
         part: partNumber,
-        ok: true,
+        ok: true
     }, id);
 }
 
