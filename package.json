@@ -20,7 +20,7 @@
   ],
   "dependencies": {
     "@slingr/slingr-services": "^0.0.8",
-    "adm-zip": "^0.5.14"
+    "adm-zip": "^0.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
